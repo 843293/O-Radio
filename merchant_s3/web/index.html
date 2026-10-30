@@ -1,0 +1,123 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>O-NetRadio 网络电台</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#0b1018;color:#e9eef6}*{box-sizing:border-box}body{max-width:980px;margin:auto;padding:24px 18px}header,.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}header{justify-content:space-between}h1{font-size:24px}h2{font-size:20px}small,.muted{color:#9aacc0}section{background:#151e2c;border:1px solid #26364b;border-radius:16px;padding:22px;margin:18px 0}button,input,select,textarea{font:inherit;padding:11px;border-radius:9px;border:1px solid #3b4e65;background:#1d2b3e;color:inherit;max-width:100%}button{cursor:pointer}button.primary{background:#2d67db;border-color:#2d67db}button:disabled{opacity:.4;cursor:wait}input[type=range]{flex:1;min-width:180px}label{display:block;margin:14px 0 7px}textarea{width:100%;min-height:130px}#stationName{font-size:clamp(28px,5vw,48px);margin:12px 0}#message{min-height:24px;color:#ffb4a5;white-space:pre-line}.station{border-top:1px solid #29384d;padding:14px 0;display:grid;grid-template-columns:1fr auto;gap:10px}.station p{margin:4px 0;overflow-wrap:anywhere;font-size:13px;color:#9aacc0}.station strong{overflow-wrap:anywhere}.actions{display:flex;gap:6px;flex-wrap:wrap}details{margin-top:18px}summary{cursor:pointer}#stationForm input{width:100%}.badge{border:1px solid #405979;border-radius:20px;padding:5px 12px;font-size:13px}a{color:#9bbcff}.hero{background:linear-gradient(135deg,#142a47,#152030)}#title{min-height:24px;color:#b5c9e6}#volumeValue{width:48px}#search{width:100%;margin:12px 0}
+</style>
+<header><h1>O-NetRadio <small>/ 网络电台</small></h1><span id="connection" class="badge">连接中</span></header><div id="message" role="status"></div>
+<div class="row"><button id="modeNetwork">网络电台</button><button id="modeFm">FM 收音机</button><span id="modeState" class="badge"></span></div>
+<section class="hero" id="networkHero"><small id="phase">准备就绪</small><h2 id="stationName">添加你的第一个电台</h2><p id="title"></p><p class="muted" id="streamInfo"></p><div class="row"><button id="previous">上一台</button><button class="primary" id="play">播放</button><button id="next">下一台</button><button id="mute">静音</button></div><label for="volume">音量</label><div class="row"><input id="volume" type="range" min="0" max="100" value="50"><span id="volumeValue">50%</span></div></section>
+<section id="fmPanel"><h2>FM 硬件收音机</h2><p id="fmStatus" class="muted"></p><h2 id="fmFrequency" style="font-size:42px;font-variant-numeric:tabular-nums">99.50 MHz</h2><p id="fmMessage"></p>
+<div class="row"><button id="fmScan" class="primary">全频段搜台</button><button id="fmCancel">取消搜台</button><button id="fmMute">恢复声音</button></div><progress id="fmProgress" max="100" value="0" style="width:100%;margin-top:14px"></progress>
+<label>音量<div class="row"><input id="fmVolume" type="range" min="0" max="100" value="50"><span id="fmVolumeValue">50%</span></div></label>
+<form id="fmTune"><div class="row"><label>手动频率 MHz<input id="fmInput" type="number" min="65" max="108" step="0.01" value="99.50" required></label><label>收藏名称（可选）<input id="fmName" maxlength="64" placeholder="例如：本地音乐广播"></label></div><div class="row"><button class="primary">调到此频率</button><button id="fmAdd" type="button">收藏此频率</button></div></form><div id="fmPresets"></div><details><summary>FM 音频诊断</summary><p class="muted">切到 FM，停止搜台后读取。只读取芯片状态并统计引脚脉冲，不播放测试音、不修改音量。可保持静音。</p><button id="fmDiagnose" type="button">读取诊断</button><pre id="fmDiagnostic" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
+<p class="muted">长按机身 A 约 1.5 秒扫描 65–108 MHz；A 旋转切换已保存电台，A 单击静音或取消扫描。扫描期间静音；完成后替换列表，取消或没有找到电台则保留原列表。最多 64 台，不显示 RDS 台名；首次进入 FM 默认静音。B 单击切换模式，双击查看设备信息。</p></section>
+<section><h2>电台列表 <small id="count"></small></h2><input id="search" placeholder="搜索名称或分组" aria-label="搜索电台"><div id="stations"></div>
+<details id="editor"><summary>添加 / 编辑电台</summary><form id="stationForm"><input id="editId" type="hidden"><label>名称<input id="name" required maxlength="96" placeholder="例如：乡间爵士"></label><label>分组<input id="group" maxlength="64" placeholder="音乐 / 新闻 / 有声"></label><label>音频流地址<input id="url" type="url" required maxlength="768" placeholder="https://example.com/live.mp3"></label><div class="row"><button class="primary">保存电台</button><button type="button" id="cancelEdit">清空</button></div></form></details>
+<details><summary>批量导入 / 导出</summary><p class="muted">支持 M3U、PLS、JSON 和每行一个 URL。需要音频流地址，不是电台官网。HLS 请直接添加 .m3u8 网络地址。</p><input id="file" type="file" accept=".m3u,.m3u8,.pls,.json,.txt"><textarea id="importText" placeholder="#EXTM3U&#10;#EXTINF:-1,电台名称&#10;https://example.com/live.mp3"></textarea><div class="row"><select id="importMode"><option value="append">追加并按 URL 去重</option><option value="replace">替换整个列表</option></select><button id="import">校验并导入</button><button id="export">导出 JSON</button><button id="exportM3u">导出 M3U</button></div><p class="muted">最多 100 台。替换列表前会要求确认。</p></details></section>
+<section><h2>北京时间与闹钟</h2><p id="beijingTime">等待设备校时</p><p id="alarmState" class="muted"></p>
+<form id="alarmForm"><label><input id="alarmEnabled" type="checkbox"> 启用闹钟</label>
+<div class="row"><label>北京时间<input id="alarmTime" type="time" value="07:00" required></label><label>闹钟音量<input id="alarmVolume" type="number" min="1" max="100" value="50" required></label></div>
+<label>播放电台<select id="alarmStation"><option value="0">请先添加电台</option></select></label>
+<label>重复星期（不选则下次响一次）</label><div id="alarmDays" class="row">
+<label><input type="checkbox" value="1" checked>周一</label><label><input type="checkbox" value="2" checked>周二</label><label><input type="checkbox" value="3" checked>周三</label><label><input type="checkbox" value="4" checked>周四</label><label><input type="checkbox" value="5" checked>周五</label><label><input type="checkbox" value="6" checked>周六</label><label><input type="checkbox" value="0" checked>周日</label></div>
+<button class="primary">保存闹钟</button><button type="button" id="alarmReload">重新读取</button></form>
+<p class="muted">设备须保持开机并联网；联网后自动校时。到点会切换到所选电台、使用闹钟音量并取消静音。断电无法唤醒，未校时不会触发；错过的时间不补响。按机身 A 键或网页“停止”结束播放。</p></section>
+<section><h2>联网与设备</h2><label>机身屏幕配色<select id="theme"><option value="0">浅紫 · Lavender</option><option value="1">薄荷绿 · Mint</option><option value="2">蜜桃 · Peach</option><option value="3">午夜蓝 · Midnight</option><option value="4">暮紫 · Dusk</option><option value="5">深林绿 · Forest</option><option value="6">暖墨琥珀 · Amber</option></select></label><p class="muted">切换后立即应用并保存，下次开机保留。机身也可长按 B 3 秒打开预览，旋转 B 选择，单击 B 保存，单击 A 取消。</p><p id="device" class="muted"></p><p id="storage" class="muted"></p><p id="battery" class="muted"></p><p class="muted">无操作 30 秒自动熄屏，播放与闹钟继续运行。第一次旋钮操作只唤醒屏幕。</p><button id="displayWake">唤醒机身屏幕</button><details><summary>深度睡眠</summary><p class="muted">连续 30 分钟无操作且未播放时自动进入，也可点击下方按钮手动进入。停止播放并断开 Wi-Fi，按机身 B 键唤醒；长按 B 3 秒可打开机身配色预览。网络缓冲、静音及断线重连仍算播放会话。启用闹钟时最多提前 60 秒唤醒联网，播放依赖网络和时钟。未校时或闹钟临近时不进入深睡。实际整机待机电流尚未测量。</p><button id="deepSleep">进入深度睡眠</button><button id="deepCancel">取消待进入的深睡</button><p id="deepState"></p></details><label><input type="checkbox" id="autoplay"> 开机自动播放上次电台</label><form id="wifi"><label>Wi-Fi 名称<input name="ssid" maxlength="32" required autocomplete="off"></label><label>Wi-Fi 密码<input name="password" type="password" maxlength="63" autocomplete="new-password"></label><button>保存并连接</button></form><p class="muted">请连接能访问电台地址的 Wi-Fi。设备热点始终保留，配置地址为 192.168.4.1。</p>
+<details><summary>固件更新</summary><p class="muted">上传本项目的应用 .bin；不接受整机镜像。更新会停止播放。首次测试期间建议继续用 USB，避免覆盖保留的原厂恢复分区。</p><form id="ota"><input name="firmware" type="file" accept=".bin" required><button>上传更新</button></form></details></section>
+<script>
+/* IMPORTER */
+let state=null,list=[],revision=0,writing=false,polling=false,alarmLoaded=false,lastFmList="";
+const $=s=>document.querySelector(s);
+const phaseNames={stopped:'已停止',waiting_wifi:'等待 Wi-Fi',connecting:'连接电台中',buffering:'正在缓冲',playing:'正在播放',retrying:'断线重连中',paused_ota:'更新中，暂停播放',audio_error:'音频初始化失败'};
+function message(t){$('#message').textContent=t||''}
+async function api(path,data,jsonBody=false,extra={}){
+ const headers={...extra};let options={headers};if(data!==undefined){headers['X-Radio-Control']='1';options.method='POST';if(jsonBody){headers['Content-Type']='application/json';options.body=JSON.stringify(data)}else options.body=new URLSearchParams(data)}
+ const r=await fetch(path,options);let d;try{d=await r.json()}catch{throw Error('设备返回异常，请检查连接和后台密码')};if(!r.ok)throw Error(d.error||'操作失败');return d;
+}
+async function refresh(){if(polling)return;polling=true;try{state=await api('/api/status');const s=state;
+ if(document.activeElement!==$('#theme'))$('#theme').value=String(s.theme??0);
+ updateFm(s);
+ $('#connection').textContent=s.wifiConnected?'Wi-Fi 已连接':'尚未联网';$('#phase').textContent=phaseNames[s.phase]||s.phase;
+ $('#stationName').textContent=s.stationName||'添加你的第一个电台';$('#title').textContent=s.title||'';
+ $('#streamInfo').textContent=[s.codec,s.bitrate?Math.round(s.bitrate/1000)+' kbps':'',s.buffered?'缓冲 '+Math.round(s.buffered/1024)+' KB':'',s.retries?'重连 '+s.retries+' 次':''].filter(Boolean).join(' · ');
+ $('#play').textContent=s.wanted?'停止':'播放';$('#mute').textContent=s.muted?'取消静音':'静音';if(document.activeElement!==$('#volume')){$('#volume').value=s.volume;$('#volumeValue').textContent=s.volume+'%'}
+ $('#autoplay').checked=s.autoplay;$('#device').textContent=`${s.version} · ${s.ssid||'未配置 Wi-Fi'} · IP ${s.ip} · 热点 ${s.ap}`;
+ $('#beijingTime').textContent='北京时间：'+s.beijingTime;
+ $('#alarmState').textContent=s.alarmError||(!s.timeValid?'尚未校时，闹钟暂不触发':s.alarm?.enabled?'闹钟已启用':'闹钟未启用');
+ if(!alarmLoaded&&s.alarm){const a=s.alarm;$('#alarmEnabled').checked=a.enabled;$('#alarmTime').value=String(a.hour).padStart(2,'0')+':'+String(a.minute).padStart(2,'0');$('#alarmVolume').value=a.volume;alarmStations(a.stationId);document.querySelectorAll('#alarmDays input').forEach(c=>c.checked=!!(a.days&(1<<Number(c.value))));alarmLoaded=true;}
+ $('#battery').textContent=s.battery?.valid?`估算电量 ${s.battery.percent}% · 电池电压 ${(s.battery.millivolts/1000).toFixed(2)}V（按原厂 ADC 系数换算，充电/负载会影响估算）`:'电量暂不可用：尚未获得有效电池电压';
+ $('#deepState').textContent=s.deepSleepError||(s.deepSleepPending?'等待松开 B 后进入深睡':'');
+ $('#displayWake').textContent=s.displayAsleep?'唤醒机身屏幕':'机身屏幕已亮';
+ $('#storage').textContent=s.storageError||(!s.storageReady?'配置存储不可用':'');
+ if(s.modeError||s.audioError||s.error)message(s.modeError||s.audioError||s.error);
+ }catch(e){$('#connection').textContent='设备离线';message(e.message)}finally{polling=false}}
+async function control(data){try{await api('/api/control',data);message('');await refresh()}catch(e){message(e.message)}}
+async function load(){const d=await api('/api/stations');list=d.stations;revision=d.revision;render()}
+async function save(items){if(writing)throw Error('正在保存，请稍候');writing=true;try{const d=await api('/api/stations',items,true,{'X-Station-Revision':String(revision)});list=d.stations;revision=d.revision;render();message('列表已保存')}finally{writing=false}}
+function alarmStations(selected=Number($('#alarmStation').value)||state?.alarm?.stationId||0){
+ const choices=list.map(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;return o});
+ if(!list.some(s=>s.id===Number(selected))){const o=document.createElement('option');o.value=selected;o.textContent=selected?'原闹钟电台已删除，请重新选择':'请选择电台';choices.unshift(o)}
+ $('#alarmStation').replaceChildren(...choices);$('#alarmStation').value=String(selected);
+}
+$('#alarmReload').onclick=()=>{alarmLoaded=false;refresh()};
+$('#alarmForm').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{
+ const [hour,minute]=$('#alarmTime').value.split(':').map(Number);let days=0;document.querySelectorAll('#alarmDays input:checked').forEach(c=>days|=1<<Number(c.value));
+ await api('/api/alarm',{enabled:$('#alarmEnabled').checked?1:0,hour,minute,days,volume:$('#alarmVolume').value,stationId:$('#alarmStation').value});
+ alarmLoaded=false;await refresh();message('闹钟已保存，按北京时间触发');
+ }catch(e){message(e.message)}finally{b.disabled=false}};
+function render(){alarmStations();const q=$('#search').value.toLowerCase();$('#count').textContent=`${list.length} / 100`;$('#stations').replaceChildren(...list.map((s,i)=>{
+ if(q&&!`${s.name} ${s.group}`.toLowerCase().includes(q))return null;
+ const row=document.createElement('div');row.className='station';const text=document.createElement('div'),name=document.createElement('strong'),info=document.createElement('p');name.textContent=s.name;info.textContent=[s.group,s.url].filter(Boolean).join(' · ');text.append(name,info);const actions=document.createElement('div');actions.className='actions';
+ const btn=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn()}catch(e){message(e.message)}finally{b.disabled=false}};actions.append(b)};
+ btn('播放',()=>control({action:'play',id:s.id}));btn('编辑',()=>{$('#editId').value=s.id;$('#name').value=s.name;$('#url').value=s.url;$('#group').value=s.group;$('#editor').open=true;$('#editor').scrollIntoView({behavior:'smooth'})});
+ btn('↑',()=>{if(i===0)return;const n=[...list];[n[i-1],n[i]]=[n[i],n[i-1]];return save(n)});btn('↓',()=>{if(i+1===list.length)return;const n=[...list];[n[i+1],n[i]]=[n[i],n[i+1]];return save(n)});
+ btn('删除',()=>{if(confirm(`删除「${s.name}」？`))return save(list.filter(v=>v.id!==s.id))});row.append(text,actions);return row;
+ }).filter(Boolean))}
+async function fmApi(data){try{await api('/api/fm',data);message('');await refresh()}catch(e){message(e.message)}}
+function updateFm(s){
+ const f=s.fm;if(!f)return;const active=s.mode==='fm';
+ $('#modeState').textContent=active?'当前：FM 收音机':'当前：网络电台';$('#networkHero').hidden=active;
+ $('#modeFm').disabled=active;$('#modeNetwork').disabled=!active;
+ $('#fmFrequency').textContent=((f.scanning?f.scanFrequencyKhz:f.frequencyKhz)/1000).toFixed(2)+' MHz';
+ $('#fmStatus').textContent=(active?(f.muted?'FM 静音':'FM 播放'):'FM 未启用')+(f.qualityValid?' · '+(f.levelTenths/10).toFixed(1)+' dBuV · '+(f.stereo?'立体声':'单声道'):'');
+ $('#fmMessage').textContent=f.error||(f.scanning?'正在扫描，已找到 '+f.found+' 台':f.message)||'';
+ $('#fmProgress').value=f.progress;$('#fmCancel').disabled=!f.scanning;$('#fmScan').disabled=f.scanning;$('#fmMute').disabled=!active||f.scanning;
+ $('#fmMute').textContent=f.muted?'恢复声音':'静音';$('#fmVolume').disabled=!active;$('#fmInput').disabled=f.scanning;$('#fmAdd').disabled=f.scanning;$('#fmTune button[type=button]').disabled=f.scanning;$('#fmTune button.primary').disabled=f.scanning;
+ if(document.activeElement!==$('#fmVolume')){$('#fmVolume').value=f.volume??s.volume;$('#fmVolumeValue').textContent=(f.volume??s.volume)+'%'}
+ const signature=JSON.stringify(f.presets);
+ if(signature!==lastFmList){lastFmList=signature;$('#fmPresets').replaceChildren(...f.presets.map(p=>{
+ const row=document.createElement('div');row.className='station';const label=document.createElement('strong');label.textContent=(p.frequencyKhz/1000).toFixed(2)+' MHz · '+p.name;
+ const actions=document.createElement('div');actions.className='actions';const tune=document.createElement('button');tune.textContent='收听';tune.onclick=()=>fmApi({action:'tune',frequencyKhz:p.frequencyKhz});
+ const del=document.createElement('button');del.textContent='删除';del.onclick=()=>{if(confirm('删除这个 FM 收藏？'))fmApi({action:'delete',frequencyKhz:p.frequencyKhz})};actions.append(tune,del);row.append(label,actions);return row;
+ }))}
+}
+function fmInputKhz(){const mhz=Number($('#fmInput').value),khz=Math.round(mhz*1000);if(!Number.isFinite(mhz)||khz<65000||khz>108000||khz%10)throw Error('请输入 65–108 MHz 的频率，精确到 0.01 MHz');return khz;}
+$('#fmDiagnose').onclick=async()=>{const b=$('#fmDiagnose');b.disabled=true;try{const d=await api('/api/fm/diagnostics',{});$('#fmDiagnostic').textContent=JSON.stringify(d,null,2)}catch(e){message(e.message)}finally{b.disabled=false}};
+$('#modeFm').onclick=()=>fmApi({action:'mode',mode:'fm'});$('#modeNetwork').onclick=()=>fmApi({action:'mode',mode:'network'});
+$('#fmScan').onclick=()=>{if(confirm('扫描约需 1–2 分钟，期间静音。完成后替换 FM 列表；取消或无结果则保留原列表。开始？'))fmApi({action:'scan'})};
+$('#fmCancel').onclick=()=>fmApi({action:'cancel'});$('#fmMute').onclick=()=>fmApi({action:'mute',muted:state?.fm?.muted?0:1});
+$('#fmVolume').oninput=()=>$('#fmVolumeValue').textContent=$('#fmVolume').value+'%';$('#fmVolume').onchange=()=>control({volume:$('#fmVolume').value});
+$('#fmTune').onsubmit=e=>{e.preventDefault();try{fmApi({action:'tune',frequencyKhz:fmInputKhz()})}catch(e){message(e.message)}};
+$('#fmAdd').onclick=()=>{try{fmApi({action:'add',frequencyKhz:fmInputKhz(),name:$('#fmName').value})}catch(e){message(e.message)}};
+$('#search').oninput=render;
+$('#previous').onclick=()=>control({action:'previous'});$('#next').onclick=()=>control({action:'next'});
+$('#play').onclick=()=>control({action:state?.wanted?'stop':'play'});$('#mute').onclick=()=>state&&control({muted:state.muted?0:1});
+$('#volume').oninput=()=>$('#volumeValue').textContent=$('#volume').value+'%';$('#volume').onchange=()=>control({volume:$('#volume').value});$('#autoplay').onchange=()=>control({autoplay:$('#autoplay').checked?1:0});
+$('#cancelEdit').onclick=()=>{$('#stationForm').reset();$('#editId').value=''};
+$('#stationForm').onsubmit=async e=>{e.preventDefault();try{const s=StationImport.validate({name:$('#name').value,url:$('#url').value,group:$('#group').value}),id=Number($('#editId').value);const n=id?list.map(v=>v.id===id?{...s,id}:v):[...list,s];if(n.length>100)throw Error('最多 100 台');await save(n);$('#cancelEdit').click()}catch(e){message(e.message)}};
+$('#file').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>120000)throw Error('文件超过 120 KB');$('#importText').value=await f.text()}catch(e){message(e.message)}};
+$('#import').onclick=async()=>{try{const imported=StationImport.parse($('#importText').value);let n;
+ if($('#importMode').value==='replace'){if(!confirm(`用 ${imported.length} 台替换现有列表？`))return;n=imported}
+ else{const seen=new Set(list.map(s=>s.url));n=[...list,...imported.filter(s=>{if(seen.has(s.url))return false;seen.add(s.url);return true})]}
+ if(n.length>100)throw Error('合并后超过 100 台');await save(n);message(`导入成功，现有 ${list.length} 台`)
+ }catch(e){message(e.message)}};
+function download(text,name,type){const a=document.createElement('a'),u=URL.createObjectURL(new Blob([text],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('#export').onclick=()=>download(JSON.stringify(list.map(({name,url,group})=>({name,url,group})),null,2),'netradio-stations.json','application/json');
+$('#exportM3u').onclick=()=>download('#EXTM3U\n'+list.map(s=>`#EXTINF:-1,${s.name}\n${s.url}`).join('\n')+'\n','netradio-stations.m3u','audio/x-mpegurl');
+$('#theme').onchange=async()=>{try{await api('/api/theme',{theme:$('#theme').value});await refresh();message('机身配色已保存')}catch(e){message(e.message)}};
+$('#deepSleep').onclick=async()=>{if(!confirm('深睡会停止播放并断开网页连接。按机身 B 键才能手动唤醒。继续？'))return;try{await api('/api/power/sleep',{});message('准备深睡，请松开 B；进入后网页将离线')}catch(e){message(e.message)}};
+$('#deepCancel').onclick=async()=>{try{await api('/api/power/cancel',{});await refresh();message('已取消深睡')}catch(e){message(e.message)}};
+$('#displayWake').onclick=async()=>{try{await api('/api/display/wake',{});await refresh()}catch(e){message(e.message)}};
+$('#wifi').onsubmit=async e=>{e.preventDefault();try{await api('/api/wifi',Object.fromEntries(new FormData(e.target)));e.target.password.value='';message('配置已保存，正在连接 Wi-Fi')}catch(e){message(e.message)}};
+$('#ota').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');if(!confirm('固件更新会写入另一个 OTA 分区，可能覆盖保留的原厂应用。继续？'))return;b.disabled=true;try{const r=await fetch('/api/update',{method:'POST',headers:{'X-Radio-Control':'1'},body:new FormData(e.target)});const j=await r.json();if(!r.ok)throw Error(j.error||'更新失败');message('更新完成，设备正在重启')}catch(e){message(e.message)}finally{b.disabled=false}};
+load().catch(e=>message(e.message));refresh();setInterval(refresh,1000);
+</script></html>

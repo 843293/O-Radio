@@ -1,0 +1,39 @@
+# Build output
+build/
+.pio/
+
+# VS Code
+.vscode/*
+!.vscode/arduino.json
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS files
+.DS_Store
+Thumbs.db
+/.claude
+/.vscode
+
+# Reproducible caches and private recovery artifacts
+__pycache__/
+*.pyc
+/firmware_analysis/device_backups/
+/firmware_analysis/*.bin
+/merchant_s3/releases/*.bin
+/merchant_s3/releases/*.elf
+
+# Public source boundary: keep device recovery/research and local audit artifacts private
+/firmware_analysis/
+/merchant_s3/releases/
+/docs/cleanup-manifest.json
+/docs/CLEANUP.md
+/.agents/
+/.codex/
+/.aws/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
