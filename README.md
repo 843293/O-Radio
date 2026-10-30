@@ -1,6 +1,6 @@
 # O-Radio — STS-6686N3
 
-ESP32-S3 + TEF6686 网络/FM 收音机，当前已刷入版本 **0.3.12**。
+ESP32-S3 + TEF6686 网络/FM 收音机
 
 - **当前项目和构建入口：[`merchant_s3/`](merchant_s3/README.md)**
 - 硬件引脚：[`board_sts_6686n3.h`](merchant_s3/include/board_sts_6686n3.h)
@@ -13,3 +13,4 @@ ESP32-S3 + TEF6686 网络/FM 收音机，当前已刷入版本 **0.3.12**。
 保留 GPL-3.0 许可及第三方归属，见 [LICENSE](LICENSE) 和 [归属说明](docs/ATTRIBUTION.md)。
 
 原厂备份包含设备配置，属于私人恢复资料，不随源码分享。
+![alt text](图片_20261030132417_33_159.jpg) ![alt text](图片_20261030132356_32_159.jpg) ![alt text](图片_20261030132342_30_159.jpg) ![alt text](图片_20261030132339_29_159.jpg) ![alt text](图片_20261030132310_28_159.jpg) ![alt text](图片_20261030132307_27_159.jpg) ![alt text](图片_20261030132303_26_159.jpg)
